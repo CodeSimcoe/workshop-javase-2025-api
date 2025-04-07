@@ -87,7 +87,7 @@
 <div class="details">
 <span id="author" class="author">Par Clément de Tastes et J.M. Doudoux</span><br>
 <span id="revnumber">version 2025.1-SNAPSHOT,</span>
-<span id="revdate">2025-04-04</span>
+<span id="revdate">2025-04-07</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table des matières</div>
@@ -1074,7 +1074,7 @@ Compléter la méthode <code>definirGathererParallelePlusGrandElement()</code> p
 <div class="sect5">
 <h6 id="_la_fabrique_gatherersfold"><a class="anchor" href="#_la_fabrique_gatherersfold"></a>4.1.3.7.1. La fabrique <code>Gatherers::fold</code></h6>
 <div class="paragraph">
-<p><code>static &lt;T, R&gt; java.util.stream.Gatherer&lt;T, ?, R&gt; fold(Supplier&lt;R&gt; initial, BiFunction&lt;? super R, ? super T, ? extends R&gt; folder)</code> renvoie un <code>Gatherer</code> séquentiel de type "many-to-one" qui agrège les données du flux de manière incrémentale et renvoie le résultat une fois tous les éléments du flux entrant consommés. Le type de l&#8217;état initial et du flux de sortie sont identiques (<code>&lt;R&gt;</code>).</p>
+<p><code>fold(Supplier&lt;R&gt; initial, BiFunction&lt;? super R, ? super T, ? extends R&gt; folder)</code> renvoie un <code>Gatherer</code> séquentiel de type "many-to-one" qui agrège les données du flux de manière incrémentale et renvoie le résultat une fois tous les éléments du flux entrant consommés. Le type de l&#8217;état initial et du flux de sortie sont identiques (<code>&lt;R&gt;</code>).</p>
 </div>
 <div class="exampleblock">
 <div class="content">
@@ -2984,7 +2984,7 @@ Comme une version <em>N</em> du JDK se base sur une version <em>N-1</em> d&#8217
 <p>L&#8217;API Class-File a pour vocation de fournir une API évoluant avec le format officiel, afin d&#8217;assurer une compatibilité immédiate avec les dernières versions du JDK sans dépendre de bibliothèques tierces.</p>
 </div>
 <div class="paragraph">
-<p>Cette API trouve sa place au sein du module <code>java.lang.classfile</code>.</p>
+<p>Cette API trouve sa place au sein du package <code>java.lang.classfile</code>.</p>
 </div>
 </div>
 <div class="sect4">

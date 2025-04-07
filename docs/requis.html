@@ -7,7 +7,7 @@
 <meta name="generator" content="Asciidoctor 2.0.23">
 <meta name="author" content="Par Clément de Tastes et J.M. Doudoux">
 <link rel="icon" type="image/x-icon" href="favicon.ico">
-<title>Workshop Java SE en 2025</title>
+<title>Workshop Java SE en 2025 : les nouvelles API</title>
 <link rel="stylesheet" href="./styles/styles.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <script src="script/clipboard.min.js"></script>
@@ -82,22 +82,22 @@
 </head>
 <body id="requis" class="book toc2 toc-left">
 <div id="header">
-<h1>Workshop Java SE en 2025</h1>
+<h1>Workshop Java SE en 2025 : les nouvelles API</h1>
 <div class="details">
 <span id="author" class="author">Par Clément de Tastes et J.M. Doudoux</span><br>
 <span id="revnumber">version 2025.1-SNAPSHOT,</span>
-<span id="revdate">2025-04-06</span>
+<span id="revdate">2025-04-07</span>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Table des matières</div>
-<p><span class="toc-root"><a href="index.html">Workshop Java SE en 2025</a></span></p><ul class="sectlevel1">
+<p><span class="toc-root"><a href="index.html">Workshop Java SE en 2025 : les nouvelles API</a></span></p><ul class="sectlevel1">
 <li><a href="introduction.html">1. Introduction</a>
 </li>
 <li><a href="requis.html"><span class="toc-current">2. Les requis</span></a>
 <ul class="sectlevel2">
 <li><a href="requis.html#_si_eclipse_est_utilisé">2.1. Si Eclipse est utilisé</a>
 <ul class="sectlevel3">
-<li><a href="requis.html#_installation_du_plugin_java_22_support_for_eclipse_2024_03_4_31">2.1.1. Installation du plugin « Java 22 support for Eclipse 2024-03 (4.31) »</a>
+<li><a href="requis.html#_installation_du_plugin_java_24_support_for_eclipse_2025_03_4_35">2.1.1. Installation du plugin « Java 24 support for Eclipse 2025-03 (4.35) »</a>
 </li>
 </ul>
 </li>
@@ -107,13 +107,9 @@
 </li>
 <li><a href="deroulement.html">3. Le déroulement du workshop</a>
 </li>
-<li><a href="partie1.html">4. Partie 1 : les évolutions dans la syntaxe</a>
+<li><a href="_les_évolutions_dans_les_api.html">4. Les évolutions dans les API</a>
 </li>
-<li><a href="partie2.html">5. Partie 2 : les évolutions dans les API</a>
-</li>
-<li><a href="partie3.html">6. Partie 3 : l&#8217;outillage du JDK</a>
-</li>
-<li><a href="conclusion.html">7. Conclusion</a>
+<li><a href="conclusion.html">5. Conclusion</a>
 </li>
 </ul>
 </div>
@@ -136,18 +132,19 @@
 </ul>
 </div>
 <div class="paragraph">
-<p>Certains exercices nécessitent l’exécution de commandes du JDK dans un Shell. Il est donc recommandé de définir la variable système <code>JAVA_HOME</code> et ajouter <code>JAVA_HOME\bin</code> à la variable système <code>PATH</code>.</p>
+<p>Certains exercices nécessitent l’exécution de commandes du JDK dans un Shell.
+Il est donc recommandé de définir la variable système <code>JAVA_HOME</code> et ajouter <code>JAVA_HOME\bin</code> à la variable système <code>PATH</code>.</p>
 </div>
 <div class="sect2">
 <h3 id="_si_eclipse_est_utilisé"><a class="anchor" href="#_si_eclipse_est_utilisé"></a>2.1. Si Eclipse est utilisé</h3>
 <div class="paragraph">
-<p>La version minimale requise d&#8217;Eclipse est 2024-03 avec le plugin « Java 22 support for Eclipse 2024-03 (4.31) »</p>
+<p>La version minimale requise d&#8217;Eclipse est 2025-03 avec le plugin « Java 24 support for Eclipse 2025-03 (4.35) »</p>
 </div>
 <div class="paragraph">
-<p>Le support Java 22 est disponible à partir de la version 2024-06 d&#8217;Eclipse.</p>
+<p>Le support Java 24 est disponible à partir de la version 2025-06 d&#8217;Eclipse.</p>
 </div>
 <div class="sect3">
-<h4 id="_installation_du_plugin_java_22_support_for_eclipse_2024_03_4_31"><a class="anchor" href="#_installation_du_plugin_java_22_support_for_eclipse_2024_03_4_31"></a>2.1.1. Installation du plugin « Java 22 support for Eclipse 2024-03 (4.31) »</h4>
+<h4 id="_installation_du_plugin_java_24_support_for_eclipse_2025_03_4_35"><a class="anchor" href="#_installation_du_plugin_java_24_support_for_eclipse_2025_03_4_35"></a>2.1.1. Installation du plugin « Java 24 support for Eclipse 2025-03 (4.35) »</h4>
 <div class="paragraph">
 <p>Utiliser le menu « Help / Eclipse Marketplace … »</p>
 </div>
@@ -156,7 +153,7 @@
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="images/eclipse-2024-03-plugin-java-22.png" alt="eclipse 2024 03 plugin java 22">
+<img src="images/eclipse-2025-03-plugin-java-24.png" alt="eclipse 2025 03 plugin java 24">
 </div>
 </div>
 <div class="paragraph">
@@ -167,13 +164,13 @@
 <div class="sect2">
 <h3 id="_si_intellij_idea_est_utilisé"><a class="anchor" href="#_si_intellij_idea_est_utilisé"></a>2.2. Si IntelliJ IDEA est utilisé</h3>
 <div class="paragraph">
-<p>Le support Java 24 est disponible à partir de la version 2024.1 d&#8217;IntelliJ IDEA.</p>
+<p>Le support Java 24 est disponible à partir de la version 2024.3.4 d&#8217;IntelliJ IDEA.</p>
 </div>
 </div>
 </div>
 </div>
 <div class="paragraph nav-footer">
-<p>← : <a href="introduction.html">Introduction</a> | ↑ : <a href="index.html">Workshop Java SE en 2025</a> | : <a href="deroulement.html">Le déroulement du workshop</a> →</p>
+<p>← : <a href="introduction.html">Introduction</a> | ↑ : <a href="index.html">Workshop Java SE en 2025 : les nouvelles API</a> | : <a href="deroulement.html">Le déroulement du workshop</a> →</p>
 </div>
 </div>
 <div id="footer">
