@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 2.0.23">
+<title>Lab : l&#8217;API Class-File</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<link rel="stylesheet" href="./asciidoctor.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="./rouge-github.css">
+<style>.toc-current{font-weight: bold;} .toc-root{font-family: "Open Sans","DejaVu Sans",sans-serif;
+                       font-size: 0.9em;} #content{display: flex; flex-direction: column; flex: 1 1 auto;}
+             .nav-footer{text-align: center; margin-top: auto;}
+             .nav-footer > p > a {white-space: nowrap;}</style>
+</head>
+<body id="class-file-api" class="book toc2 toc-left">
+<div id="header">
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<p><span class="toc-root"><a href="lab-class-file-api.html">Lab : l&#8217;API Class-File</a></span></p><ul class="sectlevel3">
+<li><a href="lab-class-file-api.html#class-file-api"><span class="toc-current">1. Lab : l&#8217;API Class-File</span></a>
+</li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div class="sect3">
+<h4 id="class-file-api"><a class="anchor" href="#class-file-api"></a>1. Lab : l&#8217;API Class-File</h4>
+<div class="paragraph">
+<p>L&#8217;API Class-File permet d&#8217;analyser, générer et transformer des fichiers de classe Java.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>JDK</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Première preview en Java 22 <a href="https://openjdk.org/jeps/457">JEP 457</a><br>
+Seconde en Java 23 <a href="https://openjdk.org/jeps/466">JEP 466</a><br>
+Standard en Java 24</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>JEP</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://openjdk.org/jeps/484">484: Class-File API</a></p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect4">
+<h5 id="_les_motivations"><a class="anchor" href="#_les_motivations"></a>1.1. Les motivations</h5>
+<div class="paragraph">
+<p>De nombreux frameworks ou bibliothèques manipulent le bytecode afin d&#8217;enrichir les programmes de diverses fonctionnalités, de façon transparente sans avoir à modifier le code source et le recompiler.</p>
+</div>
+<div class="paragraph">
+<p>Par exemple, Quarkus modifie et génère du bytecode à la volée pour réaliser un certain nombre d&#8217;optimisations durant le build.
+Hibernate peut générer et modifier des classes dynamiquement pour optimiser l&#8217;accès aux entités en base de données, en ajoutant par exemple des proxies pour le lazy loading.</p>
+</div>
+<div class="paragraph">
+<p>De nombreuses bibliothèques permettent ces manipulations comme <a href="https://asm.ow2.io/">ASM</a>, <a href="https://bytebuddy.net">ByteBuddy</a>, <a href="https://commons.apache.org/proper/commons-bcel/">Apache BCEL</a>, <a href="https://www.javassist.org/">Javassist</a>, <a href="https://github.com/quarkusio/gizmo">Gizmo</a>&#8230;&#8203; chacune avec leurs forces, faiblesses, paradigmes de programmation ou niveau d&#8217;abstraction qui leur sont propres.
+Le JDK lui-même se repose sur ASM, notamment pour la génération dynamique de bytecode pour les expressions lambdas via <code>invokedynamic</code>.<br>
+Comme une version <em>N</em> du JDK se base sur une version <em>N-1</em> d&#8217;ASM et que le format des fichiers de classe évolue constamment (particulièrement depuis le passage au rythme de release tous les six mois), on est confronté au problème de "l&#8217;œuf et la poule".</p>
+</div>
+<div class="paragraph">
+<p>L&#8217;API Class-File a pour vocation de fournir une API évoluant avec le format officiel, afin d&#8217;assurer une compatibilité immédiate avec les dernières versions du JDK sans dépendre de bibliothèques tierces.</p>
+</div>
+<div class="paragraph">
+<p>Cette API trouve sa place au sein du package <code>java.lang.classfile</code>.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_linterface_java_lang_classfile_classfile"><a class="anchor" href="#_linterface_java_lang_classfile_classfile"></a>1.2. L&#8217;interface <code>java.lang.classfile.ClassFile</code></h5>
+<div class="paragraph">
+<p>L&#8217;interface <code>ClassFile</code> représente un contexte pour analyser, transformer et générer des fichiers de classe.
+La fabrique <code>ClassFile::of</code> permet d&#8217;en obtenir une instance.</p>
+</div>
+<div class="paragraph">
+<p>On peut lui associer un ensemble d&#8217;options qui conditionnent la manière dont l&#8217;analyse et la génération sont effectuées.
+Pour cela, <code>of()</code> possède une surcharge qui accepte des <code>ClassFile.Option</code> sous forme de varargs.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_linterface_java_lang_classfile_classmodel"><a class="anchor" href="#_linterface_java_lang_classfile_classmodel"></a>1.3. L&#8217;interface <code>java.lang.classfile.ClassModel</code></h5>
+<div class="paragraph">
+<p>Une classe est modélisée par l&#8217;interface <code>ClassModel</code>, qui est une structure arborescente sous forme d&#8217;éléments héritant de <code>ClassElement</code>.</p>
+</div>
+<div class="paragraph">
+<p>Ces éléments, interfaces filles de <code>ClassElement</code> peuvent représenter diverses propriétés de la classe, tels que :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>FieldModel</code> pour un champ</p>
+</li>
+<li>
+<p><code>MethodModel</code> pour une méthode</p>
+</li>
+<li>
+<p><code>Superclass</code> pour la classe mère</p>
+</li>
+<li>
+<p><code>Interfaces</code> pour les interfaces que la classe implémente</p>
+</li>
+<li>
+<p><code>ConstantPool</code> pour le pool de constantes</p>
+</li>
+<li>
+<p>&#8230;&#8203;</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Il est possible d&#8217;en inspecter la structure grâce notamment aux méthodes <code>ClassModel::fields</code> et <code>ClassModel::methods</code> qui renvoient respectivement la liste des champs et la liste des méthodes de la classe.</p>
+</div>
+<div class="paragraph">
+<p>Chaque "famille" de modèle (<code>ClassModel</code>, <code>MethodModel</code>, <code>FieldModel</code>&#8230;&#8203;) est composée d&#8217;éléments qui lui sont propres (respectivement <code>ClassElement</code>, <code>MethodElement</code>, <code>FieldElement</code>&#8230;&#8203;).</p>
+</div>
+<div class="paragraph">
+<p>La <a href="https://docs.oracle.com/en/java/javase/{javaversion}/docs/api/java.base/java/lang/classfile/package-summary.html#data_model">Javadoc du package <code>java.lang.classfile</code></a> fournit des informations sur le modèle de données et sa structuration.</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_lanalyse_de_fichiers_de_classe"><a class="anchor" href="#_lanalyse_de_fichiers_de_classe"></a>1.4. L&#8217;analyse de fichiers de classe</h5>
+<div class="paragraph">
+<p>L&#8217;interface <code>ClassFile</code> dispose de plusieurs surcharges de la méthode <code>parse()</code> permettant d&#8217;obtenir une instance de <code>ClassModel</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>parse(byte[] bytes)</code> permet de parser un fichier de classe directement à partir de son bytecode</p>
+</li>
+<li>
+<p><code>parse(Path path) throws IOException</code> permet de parser un fichier de classe à partir de son emplacement</p>
+</li>
+</ul>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br>
+Consulter la classe <code>fr.sciam.workshop.javase.classfile.AccumulateurBasique</code>.</p>
+</div>
+<div class="paragraph">
+<p>Dans la classe <code>fr.sciam.workshop.javase.classfile.MainClassFileAPI</code>, compléter la méthode <code>analyserFichierDeClasse()</code> afin d&#8217;obtenir une instance de <code>ClassModel</code> modélisant la classe <code>AccumulateurBasique</code>.<br>
+Utiliser la méthode utilitaire <code>obtenirChemin(Class&lt;?&gt; clazz)</code> de <code>MainClassFileAPI</code> pour obtenir une instance de <code>Path</code> correspondant à la classe <code>AccumulateurBasique</code>.<br>
+Enfin, utiliser l&#8217;instance de <code>ClassModel</code> obtenue pour afficher les champs et méthodes.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">analyserFichierDeClasse</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+    <span class="nc">Path</span> <span class="n">classFilePath</span> <span class="o">=</span> <span class="n">obtenirChemin</span><span class="o">(</span><span class="nc">AccumulateurBasique</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="nc">ClassModel</span> <span class="n">classModel</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">parse</span><span class="o">(</span><span class="n">classFilePath</span><span class="o">);</span>
+    <span class="n">classModel</span><span class="o">.</span><span class="na">fields</span><span class="o">().</span><span class="na">forEach</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">::</span><span class="n">println</span><span class="o">);</span>
+    <span class="n">classModel</span><span class="o">.</span><span class="na">methods</span><span class="o">().</span><span class="na">forEach</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">::</span><span class="n">println</span><span class="o">);</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> et vérifier que l&#8217;on obtient dans la console :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Analyse d'un fichier de classe
+FieldModel[fieldName=valeur, fieldType=I, flags=2]
+MethodModel[methodName=&lt;init&gt;, methodType=()V, flags=1]
+MethodModel[methodName=ajouter, methodType=(I)I, flags=1]</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+On notera la présence du constructeur sans paramètre qui, bien qu&#8217;absent dans notre code source, a été ajouté par le compilateur Java.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p><code>ClassModel</code> étend <code>Iterable&lt;ClassElement&gt;</code>, il est donc possible de parcourir ses éléments en itérant directement sur l&#8217;instance et en utilisant par exemple le pattern matching pour effectuer des traitements propres aux types parcourus.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br>
+Modifier la méthode <code>analyserAvecPatternMatching()</code> afin d&#8217;itérer directement sur les éléments du <code>ClassModel</code>.<br>
+Utiliser une instruction <code>switch</code> et le pattern matching pour distinguer les éléments de type champ, méthode ou autre.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">analyserAvecPatternMatching</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+    <span class="nc">Path</span> <span class="n">classFilePath</span> <span class="o">=</span> <span class="n">obtenirChemin</span><span class="o">(</span><span class="nc">AccumulateurBasique</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="nc">ClassModel</span> <span class="n">classModel</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">parse</span><span class="o">(</span><span class="n">classFilePath</span><span class="o">);</span>
+    <span class="k">for</span> <span class="o">(</span><span class="nc">ClassElement</span> <span class="n">element</span> <span class="o">:</span> <span class="n">classModel</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">switch</span> <span class="o">(</span><span class="n">element</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">FieldModel</span> <span class="n">fm</span> <span class="o">-&gt;</span> <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">"Champ : %s%n"</span><span class="o">,</span> <span class="n">fm</span><span class="o">.</span><span class="na">fieldName</span><span class="o">().</span><span class="na">stringValue</span><span class="o">());</span>
+        <span class="k">case</span> <span class="nc">MethodModel</span> <span class="n">mm</span> <span class="o">-&gt;</span> <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">"Méthode : %s%n"</span><span class="o">,</span> <span class="n">mm</span><span class="o">.</span><span class="na">methodName</span><span class="o">().</span><span class="na">stringValue</span><span class="o">());</span>
+        <span class="k">default</span> <span class="o">-&gt;</span> <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">"Autre élément : %s%n"</span><span class="o">,</span> <span class="n">element</span><span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> et vérifier que l&#8217;on obtient dans la console :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Analyse d'un fichier de classe avec le Pattern Matching
+Autre élément : AccessFlags[flags=33]
+Autre élément : ClassFileVersion[majorVersion={javamajorversion}, minorVersion=0]
+Autre élément : Superclass[superclassEntry=java/lang/Object]
+Autre élément : Interfaces[interfaces=]
+Champ : valeur
+Méthode : &#60;init&#62;
+Méthode : ajouter
+Autre élément : Attribute[name=SourceFile]</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p><code>MethodModel</code> modélise une méthode par le biais d&#8217;éléments <code>java.lang.classfile.MethodElement</code>, qui peuvent représenter des propriétés telles que :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>les modificateurs d&#8217;accès (<code>public</code>, <code>private</code>, <code>static</code> &#8230;&#8203;) avec <code>AccessFlags</code></p>
+</li>
+<li>
+<p>les exceptions déclarées par la clause <code>throws</code> avec <code>ExceptionsAttribute</code></p>
+</li>
+<li>
+<p>le contenu du corps de la méthode avec <code>CodeModel</code>, constitué d&#8217;éléments <code>CodeElement</code> ordonnés qui représentent les instructions de bas niveau</p>
+</li>
+<li>
+<p>&#8230;&#8203;</p>
+</li>
+</ul>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Compléter la méthode <code>analyserMethode()</code> afin d&#8217;afficher les modificateurs d&#8217;accès de la méthode <code>AccumulateurBasique::a</code> ainsi que les instructions qui la composent.
+Les éléments <code>CodeElement</code> peuvent être de type <code>Instruction</code> ou <code>PseudoInstruction</code>, on se limitera à l&#8217;affiche des <code>Instruction</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">analyserMethode</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+    <span class="nc">Path</span> <span class="n">classFilePath</span> <span class="o">=</span> <span class="n">obtenirChemin</span><span class="o">(</span><span class="nc">AccumulateurBasique</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="nc">ClassModel</span> <span class="n">classModel</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">parse</span><span class="o">(</span><span class="n">classFilePath</span><span class="o">);</span>
+
+    <span class="k">for</span> <span class="o">(</span><span class="nc">MethodModel</span> <span class="n">method</span> <span class="o">:</span> <span class="n">classModel</span><span class="o">.</span><span class="na">methods</span><span class="o">())</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="s">"ajouter"</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">method</span><span class="o">.</span><span class="na">methodName</span><span class="o">().</span><span class="na">stringValue</span><span class="o">()))</span> <span class="o">{</span>
+        <span class="k">for</span> <span class="o">(</span><span class="nc">MethodElement</span> <span class="n">methodElement</span> <span class="o">:</span> <span class="n">method</span><span class="o">)</span> <span class="o">{</span>
+          <span class="k">switch</span> <span class="o">(</span><span class="n">methodElement</span><span class="o">)</span> <span class="o">{</span>
+            <span class="k">case</span> <span class="nc">AccessFlags</span> <span class="n">flags</span> <span class="o">-&gt;</span> <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">"Flags : %s%n"</span><span class="o">,</span> <span class="n">flags</span><span class="o">.</span><span class="na">flags</span><span class="o">());</span>
+            <span class="k">case</span> <span class="nc">CodeModel</span> <span class="n">code</span> <span class="o">-&gt;</span> <span class="o">{</span>
+              <span class="k">for</span> <span class="o">(</span><span class="nc">CodeElement</span> <span class="n">codeElement</span> <span class="o">:</span> <span class="n">code</span><span class="o">)</span> <span class="o">{</span>
+                <span class="k">if</span> <span class="o">(</span><span class="n">codeElement</span> <span class="k">instanceof</span> <span class="nc">Instruction</span> <span class="n">instruction</span><span class="o">)</span> <span class="o">{</span>
+                  <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">printf</span><span class="o">(</span><span class="s">"Instruction : %s%n"</span><span class="o">,</span> <span class="n">instruction</span><span class="o">);</span>
+                <span class="o">}</span>
+              <span class="o">}</span>
+            <span class="o">}</span>
+            <span class="k">default</span> <span class="o">-&gt;</span> <span class="o">{}</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> et vérifier que l&#8217;on obtient dans la console :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Analyse d'une méthode
+Flags : [PUBLIC]
+Instruction : Load[OP=ALOAD_0, slot=0]
+Instruction : UnboundStackInstruction[op=DUP]
+Instruction : Field[OP=GETFIELD, field=fr/sciam/workshop/javase/classfile/AccumulateurBasique.valeur:I]
+Instruction : Load[OP=ILOAD_1, slot=1]
+Instruction : UnboundOperatorInstruction[op=IADD]
+Instruction : Field[OP=PUTFIELD, field=fr/sciam/workshop/javase/classfile/AccumulateurBasique.valeur:I]
+Instruction : Load[OP=ALOAD_0, slot=0]
+Instruction : Field[OP=GETFIELD, field=fr/sciam/workshop/javase/classfile/AccumulateurBasique.valeur:I]
+Instruction : Return[OP=IRETURN]</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_lécriture_de_fichiers_de_classe"><a class="anchor" href="#_lécriture_de_fichiers_de_classe"></a>1.5. L&#8217;écriture de fichiers de classe</h5>
+<div class="paragraph">
+<p>La génération de fichiers de classe se fait par l&#8217;intermédiaire de "builders".<br>
+Plutôt que de devoir créer manuellement les instances de builders, l&#8217;API requière de fournir une expression lambda de type <code>Consumer</code> qui "consomme" le builder.<br>
+Cette API est "fluent" : les méthodes du builder renvoient l&#8217;instance même du builder, permettant de chaîner les appels.</p>
+</div>
+<div class="paragraph">
+<p>La méthode <code>build(ClassDesc, Consumer&lt;? super ClassBuilder&gt;)</code> permet de générer le bytecode (sous forme de tableau d&#8217;octets <code>byte[]</code>) à partir d&#8217;un descripteur de classe et d&#8217;invocations réalisées sur les builders.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Dans la méthode <code>ecrireFichierDeClasse()</code>, générer le bytecode correspond à une classe <code>fr.sciam.MaClassGeneree</code>, dont le corps est vide (pour l&#8217;instant).</p>
+</div>
+<div class="paragraph">
+<p>Afficher le contenu du tableau d&#8217;octets <code>byte[]</code> obtenu formaté avec <code>java.util.HexFormat</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">ecrireFichierDeClasse</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">ClassDesc</span> <span class="n">classDesc</span> <span class="o">=</span> <span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"fr.sciam.MaClassGeneree"</span><span class="o">);</span>
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">build</span><span class="o">(</span><span class="n">classDesc</span><span class="o">,</span> <span class="n">builder</span> <span class="o">-&gt;</span> <span class="o">{});</span>
+
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">"Contenu hexadécimal"</span><span class="o">);</span>
+    <span class="nc">HexFormat</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">formatHex</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">,</span> <span class="n">bytes</span><span class="o">);</span>
+    <span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">();</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> et vérifier que l&#8217;on obtient dans la console quelque chose de la forme :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Écriture d'un fichier de classe
+Contenu hexadécimal
+cafebabe00000044000501001766722f736369616d2f4d61436c61737347656e657265650700010100106a6176612f6c616e672f4f626a6563740700030001000200040000000000000000</pre>
+</div>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Le code hexadécimal nous indique que le fichier débute par la séquence <code>0xcafebabe</code> (magic number indiquant un fichier de classe) ainsi que la version <code>0x{javamajorversionhexa}</code> (qui correspond à {javamajorversion} en décimal) identifiant la version {javaversion} de Java.<br>
+La documentation complète du format est disponible sur le site d&#8217;Oracle : <a href="https://docs.oracle.com/javase/specs/jvms/se{javaversion}/html/jvms-4.html">The <code>class</code> File Format</a>.
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>Le builder <code>ClassBuilder</code> nous permet de générer le contenu de la classe grâce à diverses méthodes, parmi lesquelles :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>withSuperclass()</code> permet de définir la classe mère</p>
+</li>
+<li>
+<p><code>withInterfaceSymbols()</code> permet de définir les interfaces implémentées par notre classe</p>
+</li>
+<li>
+<p><code>withFlags()</code> permet de définir les modificateurs d&#8217;accès à notre classe</p>
+</li>
+<li>
+<p><code>withField()</code> permet d&#8217;ajouter un champ</p>
+</li>
+<li>
+<p><code>withMethod()</code> et <code>withMethodBody()</code> permettent d&#8217;ajouter des méthodes</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Certaines de ces méthodes requièrent également un <code>Consumer</code>, par exemple <code>Consumer&lt;MethodBuilder&gt;</code> pour <code>withMethod()</code> ou encore <code>Consumer&lt;CodeBuilder&gt;</code> pour <code>withMethodBody()</code>.<br>
+Ce fonctionnement permet de définir, en cascade, le contenu de la classe à générer par l&#8217;invocation successive des builders correspondants.</p>
+</div>
+<div class="paragraph">
+<p>Parmi les autres paramètres requis pour ces méthodes, on retrouve les types :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ClassDesc</code> pour décrire une classe (package, nom), que nous avons déjà utilisé pour définir notre classe</p>
+</li>
+<li>
+<p><code>AccessFlag</code> pour un modificateur d&#8217;accès comme <code>public</code></p>
+</li>
+<li>
+<p><code>int</code> pour le paramètre "methodFlags", pour lequel on peut piocher dans les constantes de <code>ClassFile</code> telles que <code>ClassFile.ACC_PUBLIC</code> ou <code>ClassFile.ACC_STATIC</code> dont les valeurs correspondent au bit de masquage du modificateur.<br>
+On peut cumuler les modificateurs en appliquant un "OU" logique <code>|</code> entre les valeurs désirées.</p>
+</li>
+<li>
+<p><code>MethodTypeDesc</code> pour définir le type de retour et le type des paramètres de la méthode :</p>
+<div class="ulist">
+<ul>
+<li>
+<p>la fabrique <code>ofDescriptor()</code> accepte une chaîne de caractères correspondant à la signature (par exemple <code>([Ljava/lang/String;)V</code> pour une méthode qui renvoie <code>void</code> et qui accepte un tableau de <code>String</code>)</p>
+</li>
+<li>
+<p>la fabrique <code>of()</code> qui accepte des instances de <code>ClassDesc</code>, dont les plus courantes sont disponibles sous forme de constantes dans la classe <code>ConstantDescs</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Compléter la méthode <code>ecrireFichierDeClasseAvance()</code> afin de générer une classe <code>MaClasseGenereeAvancee</code> qui :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>étende la classe <code>java.util.Date</code></p>
+</li>
+<li>
+<p>implémente l&#8217;interface <code>java.io.Serializable</code></p>
+</li>
+<li>
+<p>soit <code>final</code></p>
+</li>
+<li>
+<p>définisse une méthode <code>public static void main(String[])</code> via <code>ClassBuilder::withMethodBody</code> dont la seule instruction est <code>return</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Enfin, utiliser la méthode utilitaire <code>MainClassFileAPI::sauvegarderFichier</code> afin de sauvegarder le fichier <code>.class</code> sur le disque.<br>
+Pour cela, utiliser les paramètres :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>byte[]</code> : bytes, le tableau d&#8217;octets généré par l&#8217;API ClassFile</p>
+</li>
+<li>
+<p><code>String</code> : "fr/sciam/MaClasseGenereeAvancee.class", le chemin relatif au dossier <code>classfile</code> du project</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">ecrireFichierDeClasseAvancee</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">ClassDesc</span> <span class="n">classDesc</span> <span class="o">=</span> <span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"fr.sciam.MaClasseGenereeAvancee"</span><span class="o">);</span>
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">build</span><span class="o">(</span>
+      <span class="n">classDesc</span><span class="o">,</span>
+      <span class="n">builder</span> <span class="o">-&gt;</span> <span class="o">{</span>
+        <span class="c1">// Superclass</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">withSuperclass</span><span class="o">(</span><span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"java.util.Date"</span><span class="o">))</span>
+
+          <span class="c1">// Interfaces</span>
+          <span class="o">.</span><span class="na">withInterfaceSymbols</span><span class="o">(</span><span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"java.io.Serializable"</span><span class="o">))</span>
+
+          <span class="c1">// Flags</span>
+          <span class="o">.</span><span class="na">withFlags</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">FINAL</span><span class="o">)</span>
+
+          <span class="c1">// Méthode main()</span>
+          <span class="o">.</span><span class="na">withMethodBody</span><span class="o">(</span>
+            <span class="s">"main"</span><span class="o">,</span>
+            <span class="nc">MethodTypeDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
+              <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_void</span><span class="o">,</span>
+              <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_String</span><span class="o">.</span><span class="na">arrayType</span><span class="o">()</span>
+            <span class="o">),</span>
+            <span class="nc">ClassFile</span><span class="o">.</span><span class="na">ACC_PUBLIC</span> <span class="o">|</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">ACC_STATIC</span><span class="o">,</span>
+            <span class="nl">CodeBuilder:</span><span class="o">:</span><span class="n">return_</span>
+          <span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">);</span>
+
+    <span class="n">sauvegarderFichier</span><span class="o">(</span><span class="n">bytes</span><span class="o">,</span> <span class="s">"fr/sciam/MaClasseGenereeAvancee.class"</span><span class="o">);</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> puis la commande <code>javap</code> du JDK avec l&#8217;option <code>-verbose</code> pour inspecter le fichier de classe généré.</p>
+</div>
+<div class="listingblock">
+<div class="title">Depuis le dossier <code>classfile/</code> contenant la classe générée</div>
+<div class="content">
+<pre class="rouge highlight"><code data-lang="plain">javap -classpath . -verbose fr.sciam.MaClasseGenereeAvancee</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Vérifier que l&#8217;on obtient dans la console :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>final class fr.sciam.MaClasseGenereeAvancee extends java.util.Date implements java.io.Serializable
+  minor version: 0
+  major version: {javamajorversion}
+  flags: (0x0010) ACC_FINAL
+  this_class: #2                          // fr/sciam/MaClasseGenereeAvancee
+  super_class: #4                         // java/util/Date
+  interfaces: 1, fields: 0, methods: 1, attributes: 0
+Constant pool:
+   #1 = Utf8               fr/sciam/MaClasseGenereeAvancee
+   #2 = Class              #1             // fr/sciam/MaClasseGenereeAvancee
+   #3 = Utf8               java/util/Date
+   #4 = Class              #3             // java/util/Date
+   #5 = Utf8               main
+   #6 = Utf8               ([Ljava/lang/String;)V
+   #7 = Utf8               java/io/Serializable
+   #8 = Class              #7             // java/io/Serializable
+   #9 = Utf8               Code
+{
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=0, locals=1, args_size=1
+         0: return
+}</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>L&#8217;API Class-File nous permet d&#8217;interagir avec le "Constant Pool" de classe, pour inspecter ou créer des constantes, par exemple.<br>
+Un builder lui est associé : <code>ConstantPoolBuilder</code> dont une instance est obtenue par la méthode <code>ClassBuilder::constantPool</code>.<br>
+Parmi les nombreuses méthodes proposées par ce builder, certaines correspondent aux types primitifs <code>int</code>, <code>float</code>, <code>long</code>, &#8230;&#8203; avec <code>intEntry()</code>, <code>floatEntry()</code>, <code>longEntry()</code>, &#8230;&#8203;</p>
+</div>
+<div class="paragraph">
+<p>Le builder <code>FieldBuilder</code> propose les méthodes :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>withFlags()</code>, analogue aux builders vus précédemment</p>
+</li>
+<li>
+<p><code>with()</code>, qui accepte un <code>FieldElement</code> qui peut être de type <code>ConstantValueAttribute</code> pour désigner une constante</p>
+</li>
+</ul>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Compléter la méthode <code>ecrireFichierDeClasseAvancee()</code> afin d&#8217;ajouter un champ avec les caractéristiques suivantes :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>nommé "YEAR"</p>
+</li>
+<li>
+<p><code>public</code>, <code>static</code> et <code>final</code></p>
+</li>
+<li>
+<p>de type <code>int</code></p>
+</li>
+<li>
+<p>de valeur constante 2025</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">ecrireFichierDeClasseAvancee</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">ClassDesc</span> <span class="n">classDesc</span> <span class="o">=</span> <span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"fr.sciam.MaClasseGenereeAvancee"</span><span class="o">);</span>
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">build</span><span class="o">(</span>
+      <span class="n">classDesc</span><span class="o">,</span>
+      <span class="n">builder</span> <span class="o">-&gt;</span> <span class="o">{</span>
+        <span class="c1">// Superclass</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">withSuperclass</span><span class="o">(</span><span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"java.util.Date"</span><span class="o">))</span>
+
+          <span class="c1">// Interfaces</span>
+          <span class="o">.</span><span class="na">withInterfaceSymbols</span><span class="o">(</span><span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"java.io.Serializable"</span><span class="o">))</span>
+
+          <span class="c1">// Flags</span>
+          <span class="o">.</span><span class="na">withFlags</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">FINAL</span><span class="o">)</span>
+
+          <span class="c1">// Field</span>
+          <span class="o">.</span><span class="na">withField</span><span class="o">(</span>
+            <span class="s">"YEAR"</span><span class="o">,</span>
+            <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_int</span><span class="o">,</span>
+            <span class="n">fieldBuilder</span> <span class="o">-&gt;</span>
+              <span class="n">fieldBuilder</span>
+                <span class="o">.</span><span class="na">withFlags</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">PRIVATE</span><span class="o">,</span> <span class="nc">AccessFlag</span><span class="o">.</span><span class="na">STATIC</span><span class="o">,</span> <span class="nc">AccessFlag</span><span class="o">.</span><span class="na">FINAL</span><span class="o">)</span>
+                <span class="o">.</span><span class="na">with</span><span class="o">(</span><span class="nc">ConstantValueAttribute</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="n">builder</span><span class="o">.</span><span class="na">constantPool</span><span class="o">().</span><span class="na">intEntry</span><span class="o">(</span><span class="mi">2025</span><span class="o">))))</span>
+
+          <span class="c1">// Méthode main()</span>
+          <span class="o">.</span><span class="na">withMethodBody</span><span class="o">(</span>
+            <span class="s">"main"</span><span class="o">,</span>
+            <span class="nc">MethodTypeDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
+              <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_void</span><span class="o">,</span>
+              <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_String</span><span class="o">.</span><span class="na">arrayType</span><span class="o">()</span>
+            <span class="o">),</span>
+            <span class="nc">ClassFile</span><span class="o">.</span><span class="na">ACC_PUBLIC</span> <span class="o">|</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">ACC_STATIC</span><span class="o">,</span>
+            <span class="nl">CodeBuilder:</span><span class="o">:</span><span class="n">return_</span>
+          <span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">);</span>
+
+    <span class="n">sauvegarderFichier</span><span class="o">(</span><span class="n">bytes</span><span class="o">,</span> <span class="s">"fr/sciam/MaClasseGenereeAvancee.class"</span><span class="o">);</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> puis la commande <code>javap</code> pour inspecter le fichier de classe généré, et vérifier la présence de la constante dans le "Constant Pool" :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>Constant pool:
+   #1 = Utf8               fr/sciam/MaClasseGenereeAvancee
+   #2 = Class              #1             // fr/sciam/MaClasseGenereeAvancee
+   #3 = Utf8               java/util/Date
+   #4 = Class              #3             // java/util/Date
+   #5 = Utf8               YEAR
+   #6 = Utf8               I
+   #7 = Integer            2025
+   #8 = Utf8               main
+   #9 = Utf8               ([Ljava/lang/String;)V
+  #10 = Utf8               java/io/Serializable
+  #11 = Class              #10            // java/io/Serializable
+  #12 = Utf8               ConstantValue
+  #13 = Utf8               Code</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>Le builder <code>CodeBuilder</code> nous permet de descendre jusqu&#8217;au niveau du code et de ses instructions.
+Cela nécessite une certaine connaissance de la JVM et de ses opérations de bas niveau.
+La documentation est disponible sur le <a href="https://docs.oracle.com/javase/specs/jvms/se{javaversion}/html/jvms-6.html">site d&#8217;Oracle</a>.</p>
+</div>
+<div class="paragraph">
+<p>Pour que notre méthode <code>main()</code> générée affiche un traditionnel "Hello World", nous allons avoir besoin :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>d&#8217;invoquer l&#8217;opération <code>getstatic</code> pour obtenir une référence vers le champ statique <code>out</code> (de type <code>java.io.PrintStream</code>) de la classe <code>java.lang.System</code>, sur la pile</p>
+</li>
+<li>
+<p>charger la chaîne de caractères <code>"Hello World"</code> depuis le "Constant Pool" sur la pile via l&#8217;opération <code>ldc</code></p>
+</li>
+<li>
+<p>enfin, invoquer la méthode <code>PrintStream::println</code> sur l&#8217;instance <code>out</code> avec pour paramètre la chaîne de caractères, via l&#8217;opération <code>invokevirtual</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>La génération de ces appels successifs d&#8217;opérations de la JVM se fait par l&#8217;intermédiaire des méthodes de <code>CodeBuilder</code> qui portent les noms respectifs : <code>invokevirtual()</code>, <code>loadconstant()</code> et <code>invokevirtual()</code>.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Compléter la méthode <code>ecrireFichierDeClasseHelloWorld()</code> afin de générer la classe <code>fr.sciam.MonHelloWorld</code> avec une méthode <code>main()</code> qui affiche <code>Hello World</code> dans la console.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">ecrireFichierDeClasseHelloWorld</span><span class="o">()</span> <span class="o">{</span>
+    <span class="nc">ClassDesc</span> <span class="n">classDesc</span> <span class="o">=</span> <span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"fr.sciam.MonHelloWorld"</span><span class="o">);</span>
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytes</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">build</span><span class="o">(</span>
+      <span class="n">classDesc</span><span class="o">,</span>
+      <span class="n">builder</span> <span class="o">-&gt;</span> <span class="n">builder</span><span class="o">.</span><span class="na">withMethodBody</span><span class="o">(</span>
+        <span class="s">"main"</span><span class="o">,</span>
+        <span class="nc">MethodTypeDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
+          <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_void</span><span class="o">,</span>
+          <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_String</span><span class="o">.</span><span class="na">arrayType</span><span class="o">()</span>
+        <span class="o">),</span>
+        <span class="nc">ClassFile</span><span class="o">.</span><span class="na">ACC_PUBLIC</span> <span class="o">|</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">ACC_STATIC</span><span class="o">,</span>
+        <span class="n">codeBuilder</span> <span class="o">-&gt;</span> <span class="o">{</span>
+          <span class="nc">ClassDesc</span> <span class="n">printStreamClassDesc</span> <span class="o">=</span> <span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"java.io.PrintStream"</span><span class="o">);</span>
+
+          <span class="n">codeBuilder</span><span class="o">.</span><span class="na">getstatic</span><span class="o">(</span>
+              <span class="nc">ClassDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="s">"java.lang.System"</span><span class="o">),</span>
+              <span class="s">"out"</span><span class="o">,</span>
+              <span class="n">printStreamClassDesc</span>
+            <span class="o">)</span>
+            <span class="o">.</span><span class="na">loadConstant</span><span class="o">(</span><span class="s">"Hello World"</span><span class="o">)</span>
+            <span class="o">.</span><span class="na">invokevirtual</span><span class="o">(</span>
+              <span class="n">printStreamClassDesc</span><span class="o">,</span>
+              <span class="s">"println"</span><span class="o">,</span>
+              <span class="nc">MethodTypeDesc</span><span class="o">.</span><span class="na">of</span><span class="o">(</span>
+                <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_void</span><span class="o">,</span>
+                <span class="nc">ConstantDescs</span><span class="o">.</span><span class="na">CD_Object</span>
+              <span class="o">)</span>
+            <span class="o">)</span>
+            <span class="o">.</span><span class="na">return_</span><span class="o">();</span>
+        <span class="o">}</span>
+      <span class="o">)</span>
+    <span class="o">);</span>
+
+    <span class="n">sauvegarderFichier</span><span class="o">(</span><span class="n">bytes</span><span class="o">,</span> <span class="s">"fr/sciam/MonHelloWorld.class"</span><span class="o">);</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> puis la commande <code>javap</code> pour inspecter le fichier de classe généré, et vérifier la séquence d&#8217;instructions de la méthode <code>main()</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Depuis le dossier <code>classfile/</code> contenant la classe générée</div>
+<div class="content">
+<pre class="rouge highlight"><code data-lang="plain">javap -classpath . -verbose fr.sciam.MonHelloWorld</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Vérifier que l&#8217;on obtient notamment :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=1, args_size=1
+         0: getstatic     #10                 // Field java/lang/System.out:Ljava/io/PrintStream;
+         3: ldc           #12                 // String Hello World
+         5: invokevirtual #18                 // Method java/io/PrintStream.println:(Ljava/lang/Object;)V
+         8: return</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Enfin, exécuter la classe <code>fr.sciam.MonHelloWorld</code> avec la commande <code>java</code> et vérifier que le message <code>Hello World</code> s&#8217;affiche dans la console</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>$ java -classpath . fr.sciam.MonHelloWorld
+Hello World</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect4">
+<h5 id="_la_transformation_de_fichiers_de_classe"><a class="anchor" href="#_la_transformation_de_fichiers_de_classe"></a>1.6. La transformation de fichiers de classe</h5>
+<div class="paragraph">
+<p>De très fréquents cas d&#8217;usage consistent à parser un fichier de classe puis opérer un certain nombre de transformations localisées.
+On combine alors lecture et écriture dans la même phase en laissant la majorité des éléments non-altérés.</p>
+</div>
+<div class="paragraph">
+<p>L&#8217;API Class-File fournit pour chaque type de builder une méthode <code>with()</code> acceptant le type d&#8217;élément correspondant au builder, afin de passer au builder les éléments qui doivent rester inchangés par le processus de transformation :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>with(ClassElement element)</code> pour <code>ClassBuilder</code></p>
+</li>
+<li>
+<p><code>with(FieldElement element)</code> pour <code>FieldBuilder</code></p>
+</li>
+<li>
+<p><code>with(MethodElement element)</code> pour <code>MethodBuilder</code></p>
+</li>
+<li>
+<p>&#8230;&#8203;</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Pour faciliter les transformations, l&#8217;API fournit également pour chaque type de modèle :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>un transformateur capable d&#8217;opérer sur les éléments du modèle</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ClassTransform</code> opère sur les éléments <code>ClassElement</code></p>
+</li>
+<li>
+<p><code>MethodTransform</code> opère sur les éléments <code>MethodElement</code></p>
+</li>
+<li>
+<p>&#8230;&#8203;</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>des méthodes de transformation sur le builder pour traiter les éléments enfants</p>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ClassBuilder</code> possède les méthodes <code>transformField()</code> et <code>transformMethod()</code></p>
+</li>
+<li>
+<p><code>MethodBuilder</code> possède une méthode <code>transformCode()</code></p>
+</li>
+<li>
+<p>&#8230;&#8203;</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Les transformateurs sont des interfaces fonctionnelles qui s&#8217;expriment de manière pratique sous forme d&#8217;expression lambda définie avec deux paramètres : le builder et l&#8217;élément concernés.</p>
+</div>
+<div class="listingblock">
+<div class="title">Exemple pour <code>ClassTransform</code> où <code>builder</code> est de type <code>ClassBuilder</code> et <code>element</code> de type <code>ClassElement</code></div>
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java"><span class="nc">ClassTransform</span> <span class="n">ct</span> <span class="o">=</span> <span class="o">(</span><span class="n">builder</span><span class="o">,</span> <span class="n">element</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">{</span>
+  <span class="c1">// Transformation</span>
+<span class="o">};</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>L&#8217;interface <code>ClassFile</code> fournit la méthode <code>transformClass(ClassModel model, ClassTransform transform)</code> pour appliquer la transformation à l&#8217;instance.
+Elle retourne le tableau d&#8217;octets <code>byte[]</code> correspondant au bytecode transformé.</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Consulter la classe <code>fr.sciam.workshop.javase.classfile.AccumulateurAvance</code>.</p>
+</div>
+<div class="paragraph">
+<p>Compléter la méthode <code>transformerFichierDeClasse()</code> afin d&#8217;obtenir une instance de <code>ClassModel</code> correspondante, puis définir le transformateur qui permet de transformer la classe en ajoutant le modificateur <code>synchronized</code> à toutes ses méthodes <code>public</code>.</p>
+</div>
+<div class="paragraph">
+<p>Enfin, appliquer la transformation et sauvegarder le fichier <code>.class</code> dans le répertoire <code>classfile</code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Le constructeur étant modélisé par un <code>MethodModel</code>, pour ne pas le transformer on filtrera sur son nom <code>&lt;init&gt;</code> renvoyé par <code>methodName()</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">transformerFichierDeClasse</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+    <span class="c1">// Obtention du ClassModel correspondant à AccumulateurAvance</span>
+    <span class="nc">Path</span> <span class="n">path</span> <span class="o">=</span> <span class="n">obtenirChemin</span><span class="o">(</span><span class="nc">AccumulateurAvance</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="nc">ClassModel</span> <span class="n">classModel</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">parse</span><span class="o">(</span><span class="n">path</span><span class="o">);</span>
+
+    <span class="nc">ClassTransform</span> <span class="n">ct</span> <span class="o">=</span> <span class="o">(</span><span class="n">builder</span><span class="o">,</span> <span class="n">element</span><span class="o">)</span> <span class="o">-&gt;</span> <span class="o">{</span>
+
+      <span class="c1">// Filtrage sur les méthodes publiques (hors constructeur)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">element</span> <span class="k">instanceof</span> <span class="nc">MethodModel</span> <span class="n">mm</span>
+        <span class="o">&amp;&amp;</span> <span class="n">mm</span><span class="o">.</span><span class="na">flags</span><span class="o">().</span><span class="na">has</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">PUBLIC</span><span class="o">)</span>
+        <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="s">"&lt;init&gt;"</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">mm</span><span class="o">.</span><span class="na">methodName</span><span class="o">().</span><span class="na">stringValue</span><span class="o">()))</span> <span class="o">{</span>
+
+        <span class="c1">// Ajout de la méthode à l'identique avec modificateur synchronized</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">withMethod</span><span class="o">(</span>
+          <span class="n">mm</span><span class="o">.</span><span class="na">methodName</span><span class="o">().</span><span class="na">stringValue</span><span class="o">(),</span>
+          <span class="n">mm</span><span class="o">.</span><span class="na">methodTypeSymbol</span><span class="o">(),</span>
+          <span class="n">mm</span><span class="o">.</span><span class="na">flags</span><span class="o">().</span><span class="na">flagsMask</span><span class="o">(),</span>
+          <span class="n">methodBuilder</span> <span class="o">-&gt;</span> <span class="o">{</span>
+            <span class="n">mm</span><span class="o">.</span><span class="na">forEach</span><span class="o">(</span><span class="nl">methodBuilder:</span><span class="o">:</span><span class="n">with</span><span class="o">);</span>
+            <span class="n">methodBuilder</span><span class="o">.</span><span class="na">withFlags</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">PUBLIC</span><span class="o">,</span> <span class="nc">AccessFlag</span><span class="o">.</span><span class="na">SYNCHRONIZED</span><span class="o">);</span>
+          <span class="o">}</span>
+        <span class="o">);</span>
+
+      <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+        <span class="c1">// Conservation de l'élément à l'identique</span>
+        <span class="n">builder</span><span class="o">.</span><span class="na">with</span><span class="o">(</span><span class="n">element</span><span class="o">);</span>
+      <span class="o">}</span>
+    <span class="o">};</span>
+
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytecode</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">transformClass</span><span class="o">(</span><span class="n">classModel</span><span class="o">,</span> <span class="n">ct</span><span class="o">);</span>
+    <span class="n">sauvegarderFichier</span><span class="o">(</span><span class="n">bytecode</span><span class="o">,</span> <span class="s">"fr/sciam/AccumulateurAvance.class"</span><span class="o">);</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> puis la commande <code>javap</code> du JDK pour inspecter le fichier de classe généré</p>
+</div>
+<div class="listingblock">
+<div class="title">Depuis le dossier <code>classfile/</code> contenant la classe générée</div>
+<div class="content">
+<pre class="rouge highlight"><code data-lang="plain">javap -classpath . -verbose fr.sciam.AccumulateurAvance</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Vérifier que l&#8217;on obtient notamment :</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>  public fr.sciam.workshop.javase.classfile.AccumulateurAvance();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+
+[...]
+
+  public synchronized int ajouter(int);
+    descriptor: (I)I
+    flags: (0x0021) ACC_PUBLIC, ACC_SYNCHRONIZED
+
+[...]
+
+  public synchronized int soustraire(int);
+    descriptor: (I)I
+    flags: (0x0021) ACC_PUBLIC, ACC_SYNCHRONIZED</pre>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>Ce code reste relativement verbeux et force à recréer les éléments que l&#8217;on souhaite transformer à partir de ceux lus, avant de pouvoir les modifier.<br>
+Heureusement, l&#8217;API fournit un certain nombre de méthodes statiques pour faciliter un grand nombre de cas d&#8217;usages.</p>
+</div>
+<div class="paragraph">
+<p>Par exemple, pour appliquer des transformations sur des éléments précis du modèle de données :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>ClassTransform</code> fournit les méthodes <code>transformingFields()</code>, <code>transformingMethodBodies()</code>, <code>transformingMethods()</code></p>
+</li>
+<li>
+<p><code>MethodTransform</code> fournit la méthode <code>transformingCode()</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>ClassTransform</code>, <code>FieldTransform</code>, <code>MethodTransform</code>, <code>CodeTransform</code> fournissent les méthodes :</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>atStart()</code> pour opérer une transformation avant que tout élément ne soit parcouru</p>
+</li>
+<li>
+<p><code>atEnd()</code> pour opérer une transformation après que tous les éléments ont été parcourus</p>
+</li>
+<li>
+<p><code>andThen()</code> pour chaîner les transformations</p>
+</li>
+<li>
+<p><code>ofStateful()</code> pour fournir un transformateur qui sera appelé à chaque transformation, afin de maintenir un état tout au long du processus de transformation</p>
+</li>
+<li>
+<p><code>endHandler()</code> crée un transformateur qui passe au builder tous les éléments traversés (en invoquant <code>with()</code>), puis invoque à la fin le <code>Consumer</code> passé en paramètres pour effectuer une transformation</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>ClassTransform</code>, <code>FieldTransform</code>, <code>MethodTransform</code> fournissent une méthode <code>dropping()</code> qui permet d&#8217;omettre de la transformation les éléments qui répondent au prédicat passé en paramètre, pour le type d&#8217;élément concerné (respectivement <code>ClassElement</code>, <code>FieldElement</code> et <code>MethodElement</code>).</p>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p>{kb}<br></p>
+</div>
+<div class="paragraph">
+<p>Simplifier la méthode <code>transformerFichierDeClasse()</code> en utilisant <code>ClassTransform::transformingMethods</code> et <code>MethodTransform::endHandler</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">transformerFichierDeClasse</span><span class="o">()</span> <span class="kd">throws</span> <span class="nc">IOException</span> <span class="o">{</span>
+    <span class="nc">Path</span> <span class="n">path</span> <span class="o">=</span> <span class="n">obtenirChemin</span><span class="o">(</span><span class="nc">AccumulateurAvance</span><span class="o">.</span><span class="na">class</span><span class="o">);</span>
+    <span class="nc">ClassModel</span> <span class="n">classModel</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">parse</span><span class="o">(</span><span class="n">path</span><span class="o">);</span>
+
+    <span class="c1">// Filtrage sur les méthodes publiques (hors constructeur)</span>
+    <span class="nc">Predicate</span><span class="o">&lt;</span><span class="nc">MethodModel</span><span class="o">&gt;</span> <span class="n">predicate</span> <span class="o">=</span> <span class="n">methodModel</span> <span class="o">-&gt;</span>
+      <span class="n">methodModel</span><span class="o">.</span><span class="na">flags</span><span class="o">().</span><span class="na">has</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">PUBLIC</span><span class="o">)</span>
+        <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="s">"&lt;init&gt;"</span><span class="o">.</span><span class="na">equals</span><span class="o">(</span><span class="n">methodModel</span><span class="o">.</span><span class="na">methodName</span><span class="o">().</span><span class="na">stringValue</span><span class="o">());</span>
+
+    <span class="c1">// Transformation de la méthode avec ajout du modificateur synchronized</span>
+    <span class="nc">MethodTransform</span> <span class="n">mt</span> <span class="o">=</span> <span class="nc">MethodTransform</span><span class="o">.</span><span class="na">endHandler</span><span class="o">(</span><span class="n">builder</span> <span class="o">-&gt;</span>
+      <span class="n">builder</span><span class="o">.</span><span class="na">withFlags</span><span class="o">(</span><span class="nc">AccessFlag</span><span class="o">.</span><span class="na">PUBLIC</span><span class="o">,</span> <span class="nc">AccessFlag</span><span class="o">.</span><span class="na">SYNCHRONIZED</span><span class="o">)</span>
+    <span class="o">);</span>
+    <span class="nc">ClassTransform</span> <span class="n">ct</span> <span class="o">=</span> <span class="nc">ClassTransform</span><span class="o">.</span><span class="na">transformingMethods</span><span class="o">(</span><span class="n">predicate</span><span class="o">,</span> <span class="n">mt</span><span class="o">);</span>
+
+    <span class="kt">byte</span><span class="o">[]</span> <span class="n">bytecode</span> <span class="o">=</span> <span class="nc">ClassFile</span><span class="o">.</span><span class="na">of</span><span class="o">().</span><span class="na">transformClass</span><span class="o">(</span><span class="n">classModel</span><span class="o">,</span> <span class="n">ct</span><span class="o">);</span>
+    <span class="n">sauvegarderFichier</span><span class="o">(</span><span class="n">bytecode</span><span class="o">,</span> <span class="s">"fr/sciam/AccumulateurAvance.class"</span><span class="o">);</span>
+  <span class="o">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Exécuter la classe <code>MainClassFileAPI</code> puis la commande <code>javap</code> du JDK pour inspecter le fichier de classe généré, et vérifier que l&#8217;on obtient le même résultat que précédemment.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="paragraph nav-footer">
+<p></p>
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Last updated 2025-04-07 09:04:52 +0200
+</div>
+</div>
+</body>
+</html>
