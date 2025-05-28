@@ -1,11 +1,8 @@
 package fr.sciam.workshop.javase.gatherers;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.random.RandomGenerator;
 import java.util.stream.Gatherer;
 import java.util.stream.Gatherer.Integrator;
 import java.util.stream.Gatherers;
@@ -29,10 +26,6 @@ public class MainGatherers {
 
     afficherNombresParallele("Parallèle plus grand élément", definirGathererParallelePlusGrandElement());
 
-    System.out.println("isRejecting()");
-    utiliserIsRejecting();
-    System.out.println();
-
     afficherNombresSequentiel("Gatherers::fold", definirGathererFold());
 
     afficherNombresSequentiel("Gatherers::scan", definirGathererScan());
@@ -47,14 +40,7 @@ public class MainGatherers {
   }
 
   private static Gatherer<Integer, Void, Integer> definirGathererMapDouble() {
-    return Gatherer.of(
-      Integrator.ofGreedy((state, element, downstream) -> {
-        if (!downstream.isRejecting()) {
-          return downstream.push(element * 2);
-        }
-        return true;
-      })
-    );
+    return null;
   }
 
   private static Gatherer<Integer, Void, Integer> definirGathererMapGrandsDoubles() {
@@ -75,40 +61,6 @@ public class MainGatherers {
 
   private static Gatherer<Integer, ?, Integer> definirGathererParallelePlusGrandElement() {
     return null;
-  }
-
-  private static void utiliserIsRejecting() {
-    Gatherer<Integer, ?, Integer> rejectionCheckingGatherer = Gatherer.of(
-      // Integrator: processes each element
-      (_, element, downstream) -> {
-        // Print whether downstream is rejecting
-        System.out.println("Processing element " + element + ": Is downstream rejecting? " + downstream.isRejecting());
-        // Push the element downstream
-        downstream.push(element);
-        return true;
-      }
-    );
-
-    class State {
-      int count;
-    }
-    Gatherer<Integer, ?, Integer> limiter = Gatherer.ofSequential(
-      State::new,
-      (state, element, downstream) -> {
-        downstream.push(element);
-        return state.count++ < 5;
-      }
-    );
-
-    // Apply the gatherer with a limit of 2 elements
-    var s =
-    NOMBRES.stream()
-      .gather(rejectionCheckingGatherer)
-      .gather(limiter)
-      .map(String::valueOf);
-
-    System.out.println(s);
-    s.toList();
   }
 
   private static Gatherer<Integer, ?, String> definirGathererFold() {
