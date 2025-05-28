@@ -1,7 +1,5 @@
 = Workshop Java SE en 2025 - Les nouvelles API
 
-https://codesimcoe.github.io/workshop-javase-2025-api/
-
 == Requis
 
 * JDK 24

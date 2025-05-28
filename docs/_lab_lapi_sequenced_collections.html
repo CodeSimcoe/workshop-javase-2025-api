@@ -373,20 +373,20 @@ java.lang.UnsupportedOperationException
 </div>
 </div>
 <div class="paragraph">
-<p>Dans les collections qui ont déjà un ordre de tri défini, l&#8217;invocation des méthodes forçant l&#8217;ordre, par exemple <code>addFirst()</code>, <code>addLast()</code>, …​, n&#8217;a pas de sens et lève une exception de type <code>UnsupportedOperationException</code>.</p>
+<p>Dans les collections qui ont déjà un ordre de tri défini, l&#8217;invocation des méthodes forçant l&#8217;ordre, par exemple <code>addFirst()</code>, <code>addLast()</code>, &#8230;&#8203;, n&#8217;a pas de sens et lève une exception de type <code>UnsupportedOperationException</code>.</p>
 </div>
 <div class="exampleblock">
 <div class="content">
 <div class="paragraph">
 <p>{kb}<br>
-Compléter la méthode <code>collectionTriee()</code> de la classe <code>MainSequencedCollections</code> pour ajouter un nouvel élément en première position dans un collection de type <code>TreeSet</code>.</p>
+Compléter la méthode <code>collectionTriee()</code> de la classe <code>MainSequencedCollections</code> pour ajouter un nouvel élément en première position dans une collection de type <code>TreeSet</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
 <pre class="rouge highlight"><code data-lang="java">  <span class="kd">private</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">collectionTriee</span><span class="o">()</span> <span class="o">{</span>
     <span class="k">try</span> <span class="o">{</span>
-      <span class="nc">List</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">nombres</span> <span class="o">=</span> <span class="nc">List</span><span class="o">.</span><span class="na">of</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">);</span>
-      <span class="n">nombres</span><span class="o">.</span><span class="na">addFirst</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+      <span class="nc">SequencedSet</span><span class="o">&lt;</span><span class="nc">Integer</span><span class="o">&gt;</span> <span class="n">set</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">TreeSet</span><span class="o">&lt;&gt;();</span>
+      <span class="n">set</span><span class="o">.</span><span class="na">addFirst</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
     <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="nc">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
       <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="na">out</span><span class="o">);</span>
     <span class="o">}</span>
@@ -396,14 +396,13 @@ Compléter la méthode <code>collectionTriee()</code> de la classe <code>MainSeq
 <div class="paragraph">
 <p>Exécuter la classe <code>MainSequencedCollections</code> pour vérifier le résultat de l&#8217;exécution.</p>
 </div>
-<div class="literalblock">
+<div class="listingblock">
 <div class="content">
 <pre>Collection triee
 java.lang.UnsupportedOperationException
-	at java.base/java.util.ImmutableCollections.uoe(ImmutableCollections.java:142)
-	at java.base/java.util.ImmutableCollections$AbstractImmutableList.add(ImmutableCollections.java:258)
-	at java.base/java.util.List.addFirst(List.java:794)
-	at fr.sciam.workshop.javase.sequencedcollections.MainSequencedCollections.collectionTriee(MainSequencedCollections.java:145)</pre>
+	at java.base/java.util.TreeSet.addFirst(TreeSet.java:478)
+	at fr.sciam.workshop.javase.sequencedcollections.MainSequencedCollections.collectionTriee(MainSequencedCollections.java:79)
+	at fr.sciam.workshop.javase.sequencedcollections.MainSequencedCollections.main(MainSequencedCollections.java:40)</pre>
 </div>
 </div>
 </div>
@@ -511,7 +510,7 @@ java.lang.UnsupportedOperationException
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2024-06-23 17:53:25 +0200
+Last updated 2025-05-28 10:27:48 +0200
 </div>
 </div>
 </body>
