@@ -19,6 +19,8 @@ public class MainCompactNumberFormat {
 
   public static void main(String[] args) {
 
+    Locale.setDefault(Locale.FRANCE);
+
     System.out.println("Formatage par défaut");
     formaterSimple();
     System.out.println();
